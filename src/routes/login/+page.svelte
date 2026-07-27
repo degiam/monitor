@@ -9,7 +9,7 @@
 </script>
 
 <svelte:head>
-	<title>Login - {PUBLIC_APP_NAME}</title>
+	<title>{PUBLIC_APP_NAME}</title>
 </svelte:head>
 
 <div
@@ -40,7 +40,7 @@
 					stroke-width="2"
 					stroke-linecap="round"
 					stroke-linejoin="round"
-					class="icon icon-tabler icons-tabler-outline icon-tabler-binoculars w-7 h-7"
+					class="icon icon-tabler icons-tabler-outline icon-tabler-binoculars size-7"
 					><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path
 						d="M4 16a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"
 					/><path d="M14 16a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path
@@ -97,7 +97,7 @@
 					for="password"
 					class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2"
 				>
-					Password
+					Kata Sandi
 				</label>
 				<input
 					id="password"
@@ -157,7 +157,7 @@
 
 		<div class="mt-8 pt-6 border-t border-slate-800/80 text-center">
 			<p class="text-xs text-slate-500">
-				Copyright &copy; {currentYear} - {PUBLIC_APP_NAME}
+				Copyright &copy; {currentYear}
 			</p>
 		</div>
 	</div>
