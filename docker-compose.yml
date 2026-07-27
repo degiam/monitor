@@ -1,0 +1,19 @@
+name: system-monitor
+
+services:
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: system-monitor
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    volumes:
+      - monitor_data:/data
+
+volumes:
+  monitor_data:
+    driver: local
