@@ -19,4 +19,4 @@ services:
 
 volumes:
   monitor_data:
-    driver: local
+    name: pantau-monitor-data
