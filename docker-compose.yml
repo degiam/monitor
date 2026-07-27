@@ -1,11 +1,14 @@
-name: system-monitor
+name: pantau
 
 services:
   monitor:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: system-monitor
+      args:
+        PUBLIC_APP_NAME: ${PUBLIC_APP_NAME}
+        DATABASE_URL: ${DATABASE_URL}
+    container_name: pantau
     restart: unless-stopped
     ports:
       - "${PORT:-3000}:3000"
