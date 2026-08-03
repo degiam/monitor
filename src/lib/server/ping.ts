@@ -1,13 +1,24 @@
-import { getEndpointById, updateEndpoint } from '$lib/server/db/endpoints';
-import type { Endpoint } from '$lib/server/db/schema';
-
 const PING_TIMEOUT_MS = 10_000;
 
 export interface PingResult {
-	status: 'healthy' | 'unhealthy';
+	status: 'healthy' | 'unhealthy' | 'pending';
 	statusCode: number | null;
 	durationMs: number | null;
 	error: string | null;
+}
+
+export type CachedPingResult = PingResult & { lastCheck: string };
+
+// In-memory cache to store the latest results for the dashboard
+export const pingResultsCache = new Map<string, CachedPingResult>();
+
+// Event emitter untuk mengabari frontend secara realtime (SSE)
+export type PingListener = (url: string, result: CachedPingResult) => void;
+const listeners = new Set<PingListener>();
+
+export function onPingUpdate(listener: PingListener): () => void {
+	listeners.add(listener);
+	return () => listeners.delete(listener);
 }
 
 /**
@@ -43,6 +54,8 @@ export async function pingUrl(rawUrl: string): Promise<PingResult> {
 		const durationMs = Date.now() - start;
 		const isHealthy = response.status >= 200 && response.status < 400;
 
+
+
 		return {
 			status: isHealthy ? 'healthy' : 'unhealthy',
 			statusCode: response.status,
@@ -67,49 +80,25 @@ export async function pingUrl(rawUrl: string): Promise<PingResult> {
 }
 
 /**
- * Ping a single endpoint stored in the DB and update its status and lastCheck.
+ * Ping an endpoint and update the global cache.
  */
-export async function pingEndpoint(endpoint: Endpoint): Promise<PingResult> {
-	const result = await pingUrl(endpoint.url);
+export async function pingAndUpdateCache(endpointUrl: string): Promise<PingResult> {
+	const result = await pingUrl(endpointUrl);
 
-	await updateEndpoint(endpoint.id, {
+	const emoji = result.status === 'healthy' ? '✅ Berhasil' : '❌ Gagal';
+	console.log(`[Ping] ${endpointUrl} - ${emoji}`);
+
+	const cachedResult: CachedPingResult = {
+		...result,
 		lastCheck: new Date().toISOString()
-	});
-
+	};
+	
+	pingResultsCache.set(endpointUrl, cachedResult);
+	
+	// Beritahu semua listener (koneksi SSE browser) bahwa ada update
+	for (const listener of listeners) {
+		listener(endpointUrl, cachedResult);
+	}
+	
 	return result;
-}
-
-/**
- * Ping a single endpoint by its ID, fetching it from the DB first.
- */
-export async function pingEndpointById(id: string): Promise<PingResult | null> {
-	const endpoint = await getEndpointById(id);
-	if (!endpoint) return null;
-
-	return pingEndpoint(endpoint);
-}
-
-/**
- * Determine which endpoints are due for a ping check based on their interval.
- */
-function isDue(endpoint: Endpoint): boolean {
-	if (!endpoint.lastCheck) return true;
-	const lastCheckMs = new Date(endpoint.lastCheck).getTime();
-	const elapsedSeconds = (Date.now() - lastCheckMs) / 1000;
-	return elapsedSeconds >= endpoint.interval;
-}
-
-/**
- * Ping all endpoints that are due for a check. Runs concurrently.
- */
-export async function pingAllDueEndpoints(): Promise<void> {
-	const { getAllEndpoints } = await import('$lib/server/db/endpoints');
-	const endpoints = await getAllEndpoints();
-	const due = endpoints.filter(isDue);
-
-	if (due.length === 0) return;
-
-	console.log(`[Ping] Checking ${due.length} due endpoint(s)...`);
-
-	await Promise.allSettled(due.map((ep) => pingEndpoint(ep)));
 }

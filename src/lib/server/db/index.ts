@@ -1,24 +1,30 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import * as schema from './schema';
 import { env } from '$env/dynamic/private';
+import type { Endpoint } from './schema';
 
-if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+/**
+ * Parse URL_INTERVAL env var menjadi array Endpoint.
+ * Format: URL_INTERVAL=[domain.com,0.5],[domain.my.id,5],[sub.domain.com,60]
+ */
+export function getEndpoints(): Endpoint[] {
+	const raw = env.URL_INTERVAL ?? '';
+	const endpoints: Endpoint[] = [];
 
-const client = new Database(env.DATABASE_URL);
+	// Parse pattern [url,interval]
+	const regex = /\[([^,]+),([^\]]+)\]/g;
+	let match;
 
-// Otomatis buat tabel jika belum ada saat server/koneksi dinyalakan
-client.exec(`
-	CREATE TABLE IF NOT EXISTS \`endpoints\` (
-		\`id\` text PRIMARY KEY NOT NULL,
-		\`name\` text NOT NULL,
-		\`url\` text NOT NULL,
-		\`group\` text DEFAULT '' NOT NULL,
-		\`interval\` integer DEFAULT 60 NOT NULL,
-		\`last_check\` text,
-		\`created_at\` text NOT NULL,
-		\`updated_at\` text NOT NULL
-	);
-`);
+	while ((match = regex.exec(raw)) !== null) {
+		const url = match[1].trim();
+		const interval = parseFloat(match[2].trim());
 
-export const db = drizzle(client, { schema });
+		if (url && !isNaN(interval)) {
+			endpoints.push({
+				id: url, // gunakan URL sebagai ID unik
+				url,
+				intervalMinutes: interval
+			});
+		}
+	}
+
+	return endpoints;
+}
